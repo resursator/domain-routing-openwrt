@@ -59,7 +59,7 @@ parser_for_awg() {
         PrivateKey|PublicKey|PresharedKey)
             awk -F= -v key="$parsing_attribute" '
                 $1 ~ key {
-                    val=$2
+                    val = substr($0, index($0, $2))
                     gsub(/^[ \t]+|[ \t\r\n]+$/, "", val)
                     print val
                 }
