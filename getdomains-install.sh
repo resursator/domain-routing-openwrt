@@ -109,7 +109,8 @@ get_awg_attribute() {
                 if [ $parser_code -ne 0 ] || [ -z "$val" ]; then
                     read -r -p "$prompt" val
                 fi
-                if [[ "$val" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]+$ ]]; then
+                
+                if echo "$val" | egrep -oq '^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]+$'; then
                     break
                 else
                     printf "This IP is not valid. Please repeat\n" >&2
