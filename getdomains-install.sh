@@ -219,51 +219,48 @@ add_tunnel() {
         if opkg list-installed | grep -q wireguard-tools; then
             echo "Wireguard already installed"
         else
-            echo "Installed wg..."
+            echo "Installing wg..."
             opkg install wireguard-tools
         fi
 
         route_vpn
 
-        read -r -p "Enter the private key (from [Interface]):"$'\n' WG_PRIVATE_KEY
+        read -r -p "Config file path for auto parsing (empty = manual setup, e.g. ~/wg.conf): " WG_CONFIG_FILE
+        WG_CONFIG_FILE=$(eval echo "$WG_CONFIG_FILE")
 
-        while true; do
-            read -r -p "Enter internal IP address with subnet, example 192.168.100.5/24 (from [Interface]):"$'\n' WG_IP
-            if echo "$WG_IP" | egrep -oq '^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]+$'; then
-                break
-            else
-                echo "This IP is not valid. Please repeat"
-            fi
-        done
+        WG_PRIVATE_KEY=$(get_awg_attribute "$WG_CONFIG_FILE" "PrivateKey" \
+            "Enter the private key (from [Interface]):"$'\n')
 
-        read -r -p "Enter the public key (from [Peer]):"$'\n' WG_PUBLIC_KEY
-        read -r -p "If use PresharedKey, Enter this (from [Peer]). If your don't use leave blank:"$'\n' WG_PRESHARED_KEY
-        read -r -p "Enter Endpoint host without port (Domain or IP) (from [Peer]):"$'\n' WG_ENDPOINT
+        WG_IP=$(get_awg_attribute "$WG_CONFIG_FILE" "Address" \
+            "Enter internal IP address with subnet, example 192.168.100.5/24 (from [Interface]):"$'\n')
 
-        read -r -p "Enter Endpoint host port (from [Peer]) [51820]:"$'\n' WG_ENDPOINT_PORT
-        WG_ENDPOINT_PORT=${WG_ENDPOINT_PORT:-51820}
-        if [ "$WG_ENDPOINT_PORT" = '51820' ]; then
-            echo $WG_ENDPOINT_PORT
-        fi
+        WG_PUBLIC_KEY=$(get_awg_attribute "$WG_CONFIG_FILE" "PublicKey" \
+            "Enter the public key (from [Peer]):"$'\n')
+        WG_PRESHARED_KEY=$(get_awg_attribute "$WG_CONFIG_FILE" "PresharedKey" \
+            "If use PresharedKey, enter this (or leave blank):"$'\n')
+        WG_ENDPOINT=$(get_awg_attribute "$WG_CONFIG_FILE" "EndpointHost" \
+            "Enter Endpoint host without port (Domain or IP) (from [Peer]):"$'\n')
+        WG_ENDPOINT_PORT=$(get_awg_attribute "$WG_CONFIG_FILE" "EndpointPort" \
+            "Enter Endpoint host port (from [Peer]) [51820]:" "51820")
         
         uci set network.wg0=interface
         uci set network.wg0.proto='wireguard'
-        uci set network.wg0.private_key=$WG_PRIVATE_KEY
+        uci set network.wg0.private_key="$WG_PRIVATE_KEY"
         uci set network.wg0.listen_port='51820'
-        uci set network.wg0.addresses=$WG_IP
+        uci set network.wg0.addresses="$WG_IP"
 
         if ! uci show network | grep -q wireguard_wg0; then
             uci add network wireguard_wg0
         fi
         uci set network.@wireguard_wg0[0]=wireguard_wg0
         uci set network.@wireguard_wg0[0].name='wg0_client'
-        uci set network.@wireguard_wg0[0].public_key=$WG_PUBLIC_KEY
-        uci set network.@wireguard_wg0[0].preshared_key=$WG_PRESHARED_KEY
+        uci set network.@wireguard_wg0[0].public_key="$WG_PUBLIC_KEY"
+        uci set network.@wireguard_wg0[0].preshared_key="$WG_PRESHARED_KEY"
         uci set network.@wireguard_wg0[0].route_allowed_ips='0'
         uci set network.@wireguard_wg0[0].persistent_keepalive='25'
-        uci set network.@wireguard_wg0[0].endpoint_host=$WG_ENDPOINT
+        uci set network.@wireguard_wg0[0].endpoint_host="$WG_ENDPOINT"
         uci set network.@wireguard_wg0[0].allowed_ips='0.0.0.0/0'
-        uci set network.@wireguard_wg0[0].endpoint_port=$WG_ENDPOINT_PORT
+        uci set network.@wireguard_wg0[0].endpoint_port="$WG_ENDPOINT_PORT"
         uci commit
     fi
 
@@ -817,55 +814,46 @@ add_internal_wg() {
         install_awg_packages
     fi
 
-    read -r -p "Enter the private key (from [Interface]):"$'\n' WG_PRIVATE_KEY_INT
+    read -r -p "Config file path for auto parsing (empty = manual setup): " CFG_FILE
+    CFG_FILE=$(eval echo "$CFG_FILE")
 
-    while true; do
-        read -r -p "Enter internal IP address with subnet, example 192.168.100.5/24 (from [Interface]):"$'\n' WG_IP
-        if echo "$WG_IP" | egrep -oq '^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]+$'; then
-            break
-        else
-            echo "This IP is not valid. Please repeat"
-        fi
-    done
+    WG_PRIVATE_KEY_INT=$(get_awg_attribute "$CFG_FILE" "PrivateKey" "Enter the private key (from [Interface]):"$'\n')
+    WG_IP=$(get_awg_attribute "$CFG_FILE" "Address" "Enter internal IP address with subnet, example 192.168.100.5/24 (from [Interface]):"$'\n')
 
-    read -r -p "Enter the public key (from [Peer]):"$'\n' WG_PUBLIC_KEY_INT
-    read -r -p "If use PresharedKey, Enter this (from [Peer]). If your don't use leave blank:"$'\n' WG_PRESHARED_KEY_INT
-    read -r -p "Enter Endpoint host without port (Domain or IP) (from [Peer]):"$'\n' WG_ENDPOINT_INT
+    WG_PUBLIC_KEY_INT=$(get_awg_attribute "$CFG_FILE" "PublicKey" "Enter the public key (from [Peer]):"$'\n')
+    WG_PRESHARED_KEY_INT=$(get_awg_attribute "$CFG_FILE" "PresharedKey" "If use PresharedKey, Enter this (from [Peer]). If your don't use leave blank:"$'\n')
+    WG_ENDPOINT_INT=$(get_awg_attribute "$CFG_FILE" "EndpointHost" "Enter Endpoint host without port (Domain or IP) (from [Peer]):"$'\n')
 
-    read -r -p "Enter Endpoint host port (from [Peer]) [51820]:"$'\n' WG_ENDPOINT_PORT_INT
-    WG_ENDPOINT_PORT_INT=${WG_ENDPOINT_PORT_INT:-51820}
-    if [ "$WG_ENDPOINT_PORT_INT" = '51820' ]; then
-        echo $WG_ENDPOINT_PORT_INT
-    fi
+    WG_ENDPOINT_PORT_INT=$(get_awg_attribute "$CFG_FILE" "EndpointPort" "Enter Endpoint host port (from [Peer]) [51820]:" "51820")
 
     if [ "$PROTOCOL_NAME" = 'AmneziaWG' ]; then
-        read -r -p "Enter Jc value (from [Interface]):"$'\n' AWG_JC
-        read -r -p "Enter Jmin value (from [Interface]):"$'\n' AWG_JMIN
-        read -r -p "Enter Jmax value (from [Interface]):"$'\n' AWG_JMAX
-        read -r -p "Enter S1 value (from [Interface]):"$'\n' AWG_S1
-        read -r -p "Enter S2 value (from [Interface]):"$'\n' AWG_S2
-        read -r -p "Enter H1 value (from [Interface]):"$'\n' AWG_H1
-        read -r -p "Enter H2 value (from [Interface]):"$'\n' AWG_H2
-        read -r -p "Enter H3 value (from [Interface]):"$'\n' AWG_H3
-        read -r -p "Enter H4 value (from [Interface]):"$'\n' AWG_H4
+        AWG_JC=$(get_awg_attribute "$CFG_FILE" "Jc" "Enter Jc value (from [Interface]):"$'\n')
+        AWG_JMIN=$(get_awg_attribute "$CFG_FILE" "Jmin" "Enter Jmin value (from [Interface]):"$'\n')
+        AWG_JMAX=$(get_awg_attribute "$CFG_FILE" "Jmax" "Enter Jmax value (from [Interface]):"$'\n')
+        AWG_S1=$(get_awg_attribute "$CFG_FILE" "S1" "Enter S1 value (from [Interface]):"$'\n')
+        AWG_S2=$(get_awg_attribute "$CFG_FILE" "S2" "Enter S2 value (from [Interface]):"$'\n')
+        AWG_H1=$(get_awg_attribute "$CFG_FILE" "H1" "Enter H1 value (from [Interface]):"$'\n')
+        AWG_H2=$(get_awg_attribute "$CFG_FILE" "H2" "Enter H2 value (from [Interface]):"$'\n')
+        AWG_H3=$(get_awg_attribute "$CFG_FILE" "H3" "Enter H3 value (from [Interface]):"$'\n')
+        AWG_H4=$(get_awg_attribute "$CFG_FILE" "H4" "Enter H4 value (from [Interface]):"$'\n')
     fi
     
     uci set network.${INTERFACE_NAME}=interface
     uci set network.${INTERFACE_NAME}.proto=$PROTO
-    uci set network.${INTERFACE_NAME}.private_key=$WG_PRIVATE_KEY_INT
+    uci set network.${INTERFACE_NAME}.private_key="$WG_PRIVATE_KEY_INT"
     uci set network.${INTERFACE_NAME}.listen_port='51821'
-    uci set network.${INTERFACE_NAME}.addresses=$WG_IP
+    uci set network.${INTERFACE_NAME}.addresses="$WG_IP"
 
     if [ "$PROTOCOL_NAME" = 'AmneziaWG' ]; then
-        uci set network.${INTERFACE_NAME}.awg_jc=$AWG_JC
-        uci set network.${INTERFACE_NAME}.awg_jmin=$AWG_JMIN
-        uci set network.${INTERFACE_NAME}.awg_jmax=$AWG_JMAX
-        uci set network.${INTERFACE_NAME}.awg_s1=$AWG_S1
-        uci set network.${INTERFACE_NAME}.awg_s2=$AWG_S2
-        uci set network.${INTERFACE_NAME}.awg_h1=$AWG_H1
-        uci set network.${INTERFACE_NAME}.awg_h2=$AWG_H2
-        uci set network.${INTERFACE_NAME}.awg_h3=$AWG_H3
-        uci set network.${INTERFACE_NAME}.awg_h4=$AWG_H4
+        uci set network.${INTERFACE_NAME}.awg_jc="$AWG_JC"
+        uci set network.${INTERFACE_NAME}.awg_jmin="$AWG_JMIN"
+        uci set network.${INTERFACE_NAME}.awg_jmax="$AWG_JMAX"
+        uci set network.${INTERFACE_NAME}.awg_s1="$AWG_S1"
+        uci set network.${INTERFACE_NAME}.awg_s2="$AWG_S2"
+        uci set network.${INTERFACE_NAME}.awg_h1="$AWG_H1"
+        uci set network.${INTERFACE_NAME}.awg_h2="$AWG_H2"
+        uci set network.${INTERFACE_NAME}.awg_h3="$AWG_H3"
+        uci set network.${INTERFACE_NAME}.awg_h4="$AWG_H4"
     fi
 
     if ! uci show network | grep -q ${CONFIG_NAME}; then
@@ -874,13 +862,13 @@ add_internal_wg() {
 
     uci set network.@${CONFIG_NAME}[0]=$CONFIG_NAME
     uci set network.@${CONFIG_NAME}[0].name="${INTERFACE_NAME}_client"
-    uci set network.@${CONFIG_NAME}[0].public_key=$WG_PUBLIC_KEY_INT
-    uci set network.@${CONFIG_NAME}[0].preshared_key=$WG_PRESHARED_KEY_INT
+    uci set network.@${CONFIG_NAME}[0].public_key="$WG_PUBLIC_KEY_INT"
+    uci set network.@${CONFIG_NAME}[0].preshared_key="$WG_PRESHARED_KEY_INT"
     uci set network.@${CONFIG_NAME}[0].route_allowed_ips='0'
     uci set network.@${CONFIG_NAME}[0].persistent_keepalive='25'
-    uci set network.@${CONFIG_NAME}[0].endpoint_host=$WG_ENDPOINT_INT
+    uci set network.@${CONFIG_NAME}[0].endpoint_host="$WG_ENDPOINT_INT"
     uci set network.@${CONFIG_NAME}[0].allowed_ips='0.0.0.0/0'
-    uci set network.@${CONFIG_NAME}[0].endpoint_port=$WG_ENDPOINT_PORT_INT
+    uci set network.@${CONFIG_NAME}[0].endpoint_port="$WG_ENDPOINT_PORT_INT"
     uci commit network
 
     grep -q "110 vpninternal" /etc/iproute2/rt_tables || echo '110 vpninternal' >> /etc/iproute2/rt_tables
