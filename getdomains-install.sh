@@ -109,7 +109,6 @@ get_awg_attribute() {
                 if [ $parser_code -ne 0 ] || [ -z "$val" ]; then
                     read -r -p "$prompt" val
                 fi
-                
                 if echo "$val" | egrep -oq '^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]+$'; then
                     break
                 else
