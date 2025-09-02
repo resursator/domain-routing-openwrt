@@ -111,8 +111,18 @@ get_awg_attribute() {
                 fi
                 if echo "$val" | egrep -oq '^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]+$'; then
                     break
+                elif echo "$val" | egrep -oq '^([0-9]{1,3}\.){3}[0-9]{1,3}$'; then
+                    read -r -p "This internal IP ($val) has no mask. Use $val/32? [Y/n]: " choice
+                    choice=${choice:-Y}
+                    if [[ "$choice" =~ ^[Yy]$ ]]; then
+                        val="$val/32"
+                        break
+                    else
+                        parser_code=2
+                        val=""
+                    fi
                 else
-                    printf "This IP ($val) is not valid. Please repeat\n" >&2
+                    printf "This IP ($val) is not valid.\n" >&2
                     parser_code=2
                     val=""
                 fi
