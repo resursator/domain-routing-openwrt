@@ -46,6 +46,111 @@ add_mark() {
     fi
 }
 
+parser_for_awg() {
+    local cfg_file="$1"
+    local parsing_attribute="$2"
+
+    if [ -z "$cfg_file" ] || [ ! -f "$cfg_file" ]; then
+        echo "Config file not found: $cfg_file" >&2
+        return 1
+    fi
+
+    case "$parsing_attribute" in
+        PrivateKey|PublicKey|PresharedKey)
+            awk -F= -v key="$parsing_attribute" '
+                $1 ~ key {
+                    val=$2
+                    gsub(/^[ \t]+|[ \t\r\n]+$/, "", val)
+                    print val
+                }
+            ' "$cfg_file"
+            ;;
+        Address|Jc|Jmin|Jmax|S1|S2|H1|H2|H3|H4)
+            awk -F' *= *' -v key="$parsing_attribute" '
+                $1 ~ key {print $2}
+            ' "$cfg_file"
+            ;;
+        EndpointHost)
+            awk -F= '/Endpoint/ {
+                val=$2
+                gsub(/^[ \t]+|[ \t\r\n]+$/, "", val)
+                split(val, parts, ":")
+                print parts[1]
+            }' "$cfg_file"
+            ;;
+        EndpointPort)
+            awk -F= '/Endpoint/ {
+                val=$2
+                gsub(/^[ \t]+|[ \t\r\n]+$/, "", val)
+                split(val, parts, ":")
+                if (parts[2] != "") print parts[2]; else print 51820
+            }' "$cfg_file"
+            ;;
+        *)
+            echo "Unknown attribute: $parsing_attribute" >&2
+            return 2
+            ;;
+    esac
+}
+
+get_awg_attribute() {
+    local cfg_file="$1"
+    local attribute="$2"
+    local prompt="$3"
+    local default="$4"
+
+    local val parser_code
+
+    case "$attribute" in
+        Address)
+            val=$(parser_for_awg "$cfg_file" "Address")
+            parser_code=$?
+            while true; do
+                if [ $parser_code -ne 0 ] || [ -z "$val" ]; then
+                    read -r -p "$prompt" val
+                fi
+                if [[ "$val" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]+$ ]]; then
+                    break
+                else
+                    printf "This IP is not valid. Please repeat\n" >&2
+                    parser_code=2
+                    val=""
+                fi
+            done
+            ;;
+
+        EndpointPort)
+            val=$(parser_for_awg "$cfg_file" "EndpointPort")
+            if [ $? -ne 0 ] || [ -z "$val" ]; then
+                read -r -p "$prompt" val
+
+                if [ -z "$val" ] && [ -n "$default" ]; then
+                    val="$default"
+                fi
+            fi
+            while ! echo "$val" | egrep -q '^[0-9]+$' || [ "$val" -lt 1 ] || [ "$val" -gt 65535 ]; do
+                printf "Invalid port. Enter number between 1 and 65535\n" >&2
+                read -r -p "$prompt" val
+                if [ -z "$val" ] && [ -n "$default" ]; then
+                    val="$default"
+                fi
+            done
+            ;;
+
+        *)
+            val=$(parser_for_awg "$cfg_file" "$attribute")
+            if [ $? -ne 0 ] || [ -z "$val" ]; then
+                read -r -p "$prompt" val
+                if [ -z "$val" ] && [ -n "$default" ]; then
+                    val="$default"
+                fi
+            fi
+            ;;
+    esac
+
+    echo "$val"
+}
+
 add_tunnel() {
     echo "We can automatically configure only Wireguard and Amnezia WireGuard. OpenVPN, Sing-box(Shadowsocks2022, VMess, VLESS, etc) and tun2socks will need to be configured manually"
     echo "Select a tunnel:"
@@ -249,52 +354,50 @@ EOF
 
         route_vpn
 
-        read -r -p "Enter the private key (from [Interface]):"$'\n' AWG_PRIVATE_KEY
+        read -r -p "Config file path for auto parsing (empty = manual setup, e.g. ~/amnezia_for_awg.conf): " AWG_CONFIG_FILE
+        AWG_CONFIG_FILE=$(eval echo "$AWG_CONFIG_FILE")
 
-        while true; do
-            read -r -p "Enter internal IP address with subnet, example 192.168.100.5/24 (Address from [Interface]):"$'\n' AWG_IP
-            if echo "$AWG_IP" | egrep -oq '^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]+$'; then
-                break
-            else
-                echo "This IP is not valid. Please repeat"
-            fi
-        done
+        AWG_PRIVATE_KEY=$(get_awg_attribute "$AWG_CONFIG_FILE" "PrivateKey" \
+            "Enter the private key (from [Interface]):"$'\n')
 
-        read -r -p "Enter Jc value (from [Interface]):"$'\n' AWG_JC
-        read -r -p "Enter Jmin value (from [Interface]):"$'\n' AWG_JMIN
-        read -r -p "Enter Jmax value (from [Interface]):"$'\n' AWG_JMAX
-        read -r -p "Enter S1 value (from [Interface]):"$'\n' AWG_S1
-        read -r -p "Enter S2 value (from [Interface]):"$'\n' AWG_S2
-        read -r -p "Enter H1 value (from [Interface]):"$'\n' AWG_H1
-        read -r -p "Enter H2 value (from [Interface]):"$'\n' AWG_H2
-        read -r -p "Enter H3 value (from [Interface]):"$'\n' AWG_H3
-        read -r -p "Enter H4 value (from [Interface]):"$'\n' AWG_H4
-    
-        read -r -p "Enter the public key (from [Peer]):"$'\n' AWG_PUBLIC_KEY
-        read -r -p "If use PresharedKey, Enter this (from [Peer]). If your don't use leave blank:"$'\n' AWG_PRESHARED_KEY
-        read -r -p "Enter Endpoint host without port (Domain or IP) (from [Peer]):"$'\n' AWG_ENDPOINT
+        AWG_IP=$(get_awg_attribute "$AWG_CONFIG_FILE" "Address" \
+            "Enter internal IP address with subnet, example 192.168.100.5/24 (Address from [Interface]):"$'\n')
 
-        read -r -p "Enter Endpoint host port (from [Peer]) [51820]:"$'\n' AWG_ENDPOINT_PORT
-        AWG_ENDPOINT_PORT=${AWG_ENDPOINT_PORT:-51820}
-        if [ "$AWG_ENDPOINT_PORT" = '51820' ]; then
-            echo $AWG_ENDPOINT_PORT
-        fi
-        
+        AWG_JC=$(get_awg_attribute "$AWG_CONFIG_FILE" "Jc" "Enter Jc value (from [Interface]):"$'\n')
+        AWG_JMIN=$(get_awg_attribute "$AWG_CONFIG_FILE" "Jmin" "Enter Jmin value (from [Interface]):"$'\n')
+        AWG_JMAX=$(get_awg_attribute "$AWG_CONFIG_FILE" "Jmax" "Enter Jmax value (from [Interface]):"$'\n')
+        AWG_S1=$(get_awg_attribute "$AWG_CONFIG_FILE" "S1" "Enter S1 value (from [Interface]):"$'\n')
+        AWG_S2=$(get_awg_attribute "$AWG_CONFIG_FILE" "S2" "Enter S2 value (from [Interface]):"$'\n')
+        AWG_H1=$(get_awg_attribute "$AWG_CONFIG_FILE" "H1" "Enter H1 value (from [Interface]):"$'\n')
+        AWG_H2=$(get_awg_attribute "$AWG_CONFIG_FILE" "H2" "Enter H2 value (from [Interface]):"$'\n')
+        AWG_H3=$(get_awg_attribute "$AWG_CONFIG_FILE" "H3" "Enter H3 value (from [Interface]):"$'\n')
+        AWG_H4=$(get_awg_attribute "$AWG_CONFIG_FILE" "H4" "Enter H4 value (from [Interface]):"$'\n')
+
+        AWG_PUBLIC_KEY=$(get_awg_attribute "$AWG_CONFIG_FILE" "PublicKey" "Enter the public key (from [Peer]):"$'\n')
+        AWG_PRESHARED_KEY=$(get_awg_attribute "$AWG_CONFIG_FILE" "PresharedKey" \
+            "If use PresharedKey, Enter this (from [Peer]). If your don't use leave blank:"$'\n')
+
+        AWG_ENDPOINT=$(get_awg_attribute "$AWG_CONFIG_FILE" "EndpointHost" \
+            "Enter Endpoint host without port (Domain or IP) (from [Peer]):"$'\n')
+
+        AWG_ENDPOINT_PORT=$(get_awg_attribute "$AWG_CONFIG_FILE" "EndpointPort" \
+            "Enter Endpoint host port (from [Peer]) [51820]:"$'\n' "51820")
+
         uci set network.awg0=interface
         uci set network.awg0.proto='amneziawg'
-        uci set network.awg0.private_key=$AWG_PRIVATE_KEY
+        uci set network.awg0.private_key="$AWG_PRIVATE_KEY"
         uci set network.awg0.listen_port='51820'
-        uci set network.awg0.addresses=$AWG_IP
+        uci set network.awg0.addresses="$AWG_IP"
 
-        uci set network.awg0.awg_jc=$AWG_JC
-        uci set network.awg0.awg_jmin=$AWG_JMIN
-        uci set network.awg0.awg_jmax=$AWG_JMAX
-        uci set network.awg0.awg_s1=$AWG_S1
-        uci set network.awg0.awg_s2=$AWG_S2
-        uci set network.awg0.awg_h1=$AWG_H1
-        uci set network.awg0.awg_h2=$AWG_H2
-        uci set network.awg0.awg_h3=$AWG_H3
-        uci set network.awg0.awg_h4=$AWG_H4
+        uci set network.awg0.awg_jc="$AWG_JC"
+        uci set network.awg0.awg_jmin="$AWG_JMIN"
+        uci set network.awg0.awg_jmax="$AWG_JMAX"
+        uci set network.awg0.awg_s1="$AWG_S1"
+        uci set network.awg0.awg_s2="$AWG_S2"
+        uci set network.awg0.awg_h1="$AWG_H1"
+        uci set network.awg0.awg_h2="$AWG_H2"
+        uci set network.awg0.awg_h3="$AWG_H3"
+        uci set network.awg0.awg_h4="$AWG_H4"
 
         if ! uci show network | grep -q amneziawg_awg0; then
             uci add network amneziawg_awg0
@@ -302,13 +405,14 @@ EOF
 
         uci set network.@amneziawg_awg0[0]=amneziawg_awg0
         uci set network.@amneziawg_awg0[0].name='awg0_client'
-        uci set network.@amneziawg_awg0[0].public_key=$AWG_PUBLIC_KEY
-        uci set network.@amneziawg_awg0[0].preshared_key=$AWG_PRESHARED_KEY
+        uci set network.@amneziawg_awg0[0].public_key="$AWG_PUBLIC_KEY"
+        uci set network.@amneziawg_awg0[0].preshared_key="$AWG_PRESHARED_KEY"
         uci set network.@amneziawg_awg0[0].route_allowed_ips='0'
         uci set network.@amneziawg_awg0[0].persistent_keepalive='25'
-        uci set network.@amneziawg_awg0[0].endpoint_host=$AWG_ENDPOINT
+        uci set network.@amneziawg_awg0[0].endpoint_host="$AWG_ENDPOINT"
         uci set network.@amneziawg_awg0[0].allowed_ips='0.0.0.0/0'
-        uci set network.@amneziawg_awg0[0].endpoint_port=$AWG_ENDPOINT_PORT
+        uci set network.@amneziawg_awg0[0].endpoint_port="$AWG_ENDPOINT_PORT"
+
         uci commit
     fi
 
