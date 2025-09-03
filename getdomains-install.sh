@@ -50,8 +50,11 @@ parser_for_awg() {
     local cfg_file="$1"
     local parsing_attribute="$2"
 
-    if [ -z "$cfg_file" ] || [ ! -f "$cfg_file" ]; then
-        echo "Config file not found: $cfg_file" >&2
+    if [ -z "$cfg_file" ]; then
+        echo "Config file not specified, starting manual setup" >&2
+        return 1
+    elif [ ! -f "$cfg_file" ]; then
+        echo "Config file not found: $cfg_file, starting manual setup" >&2
         return 1
     fi
 
@@ -104,7 +107,7 @@ get_awg_attribute() {
 
     case "$attribute" in
         Address)
-            if [ $cfg_status -eq 0 ]; then
+            if [ "$cfg_status" -eq 0 ]; then
                 val=$(parser_for_awg "$cfg_file" "Address")
                 parser_code=$?
             else
@@ -112,7 +115,7 @@ get_awg_attribute() {
                 read -r -p "$prompt" val
             fi
             while true; do
-                if [ $parser_code -ne 0 ] || [ -z "$val" ]; then
+                if [ "$parser_code" -ne 0 ] || [ -z "$val" ]; then
                     read -r -p "$prompt" val
                 fi
                 if echo "$val" | egrep -oq '^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]+$'; then
@@ -136,11 +139,11 @@ get_awg_attribute() {
             ;;
 
         EndpointPort)
-            if [ $cfg_status -eq 0 ]; then
+            if [ "$cfg_status" -eq 0 ]; then
                 val=$(parser_for_awg "$cfg_file" "EndpointPort")
                 parser_code=$?
             fi
-            if [ $parser_code -ne 0 ] || [ -z "$val" ]; then
+            if [ "$parser_code" -ne 0 ] || [ -z "$val" ]; then
                 read -r -p "$prompt" val
 
                 if [ -z "$val" ] && [ -n "$default" ]; then
@@ -157,11 +160,11 @@ get_awg_attribute() {
             ;;
 
         *)
-            if [ $cfg_status -eq 0 ]; then
+            if [ "$cfg_status" -eq 0 ]; then
                 val=$(parser_for_awg "$cfg_file" "$attribute")
                 parser_code=$?
             fi
-            if [ $parser_code -ne 0 ] || [ -z "$val" ]; then
+            if [ "$parser_code" -ne 0 ] || [ -z "$val" ]; then
                 read -r -p "$prompt" val
                 if [ -z "$val" ] && [ -n "$default" ]; then
                     val="$default"
