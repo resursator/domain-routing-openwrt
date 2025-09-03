@@ -142,6 +142,8 @@ get_awg_attribute() {
             if [ -n "$cfg_status" ] && [ "$cfg_status" -eq 0 ]; then
                 val=$(parser_for_awg "$cfg_file" "EndpointPort")
                 parser_code=$?
+            else
+                parser_code=1
             fi
             if [ "$parser_code" -ne 0 ] || [ -z "$val" ]; then
                 read -r -p "$prompt" val
@@ -163,6 +165,8 @@ get_awg_attribute() {
             if [ -n "$cfg_status" ] && [ "$cfg_status" -eq 0 ]; then
                 val=$(parser_for_awg "$cfg_file" "$attribute")
                 parser_code=$?
+            else
+                parser_code=1
             fi
             if [ "$parser_code" -ne 0 ] || [ -z "$val" ]; then
                 read -r -p "$prompt" val
