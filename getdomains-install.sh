@@ -1,5 +1,4 @@
 #!/bin/sh
-export PATH=/usr/sbin:/usr/bin:/sbin:/bin
 
 #set -x
 
@@ -1024,7 +1023,10 @@ add_internal_wg() {
 
     sed -i "/done/a sed -i '/youtube.com\\\|ytimg.com\\\|ggpht.com\\\|googlevideo.com\\\|googleapis.com\\\|youtubekids.com/d' /tmp/dnsmasq.d/domains.lst" "/etc/init.d/getdomains"
 
+    sleep 5
     /etc/init.d/dnsmasq restart
+
+    sleep 5
     /etc/init.d/network restart
 
     exit 0
@@ -1159,6 +1161,8 @@ add_dns_resolver
 add_getdomains
 
 printf "\033[32;1mRestart network\033[0m\n"
+
+sleep 5
 /etc/init.d/network restart
 
 printf "\033[32;1mDone\033[0m\n"
