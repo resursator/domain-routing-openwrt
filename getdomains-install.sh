@@ -250,8 +250,11 @@ add_tunnel() {
         read -r -p "Config file path for auto parsing (empty = manual setup, e.g. ~/wg.conf): " WG_CONFIG_FILE
         WG_CONFIG_FILE=$(eval echo "$WG_CONFIG_FILE")
         CONFIG_MISSING=0
-        if [ -z "$WG_CONFIG_FILE" ] || [ ! -f "$WG_CONFIG_FILE" ]; then
-            echo "Config file not found: $WG_CONFIG_FILE" >&2
+        if [ -z "$WG_CONFIG_FILE" ]; then
+            echo "Config file not specified, starting manual setup" >&2
+            CONFIG_MISSING=1
+        elif [ ! -f "$WG_CONFIG_FILE" ]; then
+            echo "Config file not found: $WG_CONFIG_FILE, starting manual setup" >&2
             CONFIG_MISSING=1
         fi
 
@@ -381,8 +384,11 @@ EOF
         read -r -p "Config file path for auto parsing (empty = manual setup, e.g. ~/amnezia_for_awg.conf): " AWG_CONFIG_FILE
         AWG_CONFIG_FILE=$(eval echo "$AWG_CONFIG_FILE")
         CONFIG_MISSING=0
-        if [ -z "$AWG_CONFIG_FILE" ] || [ ! -f "$AWG_CONFIG_FILE" ]; then
-            echo "Config file not found: $AWG_CONFIG_FILE" >&2
+        if [ -z "$AWG_CONFIG_FILE" ]; then
+            echo "Config file not specified, starting manual setup" >&2
+            CONFIG_MISSING=1
+        elif [ ! -f "$AWG_CONFIG_FILE" ]; then
+            echo "Config file not found: $AWG_CONFIG_FILE, starting manual setup" >&2
             CONFIG_MISSING=1
         fi
 
@@ -849,8 +855,11 @@ add_internal_wg() {
     read -r -p "Config file path for auto parsing (empty = manual setup): " CFG_FILE
     CFG_FILE=$(eval echo "$CFG_FILE")
     CONFIG_MISSING=0
-    if [ -z "$CFG_FILE" ] || [ ! -f "$CFG_FILE" ]; then
-        echo "Config file not found: $CFG_FILE" >&2
+    if [ -z "$CFG_FILE" ]; then
+        echo "Config file not specified, starting manual setup" >&2
+        CONFIG_MISSING=1
+    elif [ ! -f "$CFG_FILE" ]; then
+        echo "Config file not found: $CFG_FILE, starting manual setup" >&2
         CONFIG_MISSING=1
     fi
 
