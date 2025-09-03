@@ -112,7 +112,6 @@ get_awg_attribute() {
                 parser_code=$?
             else
                 parser_code=1
-                read -r -p "$prompt" val
             fi
             while true; do
                 if [ "$parser_code" -ne 0 ] || [ -z "$val" ]; then
