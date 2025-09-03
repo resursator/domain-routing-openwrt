@@ -100,7 +100,7 @@ get_awg_attribute() {
     local cfg_file="$1"
     local attribute="$2"
     local prompt="$3"
-    local cfg_status="$4"
+    local cfg_status="${4:-1}"
     local default="$5"
 
     local val parser_code
