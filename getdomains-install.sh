@@ -1,4 +1,7 @@
 #!/bin/sh
+echo $PATH
+export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+echo $PATH
 
 #set -x
 
