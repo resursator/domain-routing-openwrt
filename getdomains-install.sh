@@ -677,7 +677,7 @@ add_dns_resolver() {
             fi
 
             printf "\033[32;1mDNSCrypt restart\033[0m\n"
-            service dnscrypt-proxy restart
+            /etc/init.d/service dnscrypt-proxy restart
             printf "\033[32;1mDNSCrypt needs to load the relays list. Please wait\033[0m\n"
             sleep 30
 
@@ -1023,8 +1023,8 @@ add_internal_wg() {
 
     sed -i "/done/a sed -i '/youtube.com\\\|ytimg.com\\\|ggpht.com\\\|googlevideo.com\\\|googleapis.com\\\|youtubekids.com/d' /tmp/dnsmasq.d/domains.lst" "/etc/init.d/getdomains"
 
-    service dnsmasq restart
-    service network restart
+    /etc/init.d/service dnsmasq restart
+    /etc/init.d/service network restart
 
     exit 0
 }
