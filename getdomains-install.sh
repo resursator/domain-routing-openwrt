@@ -1023,8 +1023,8 @@ add_internal_wg() {
 
     sed -i "/done/a sed -i '/youtube.com\\\|ytimg.com\\\|ggpht.com\\\|googlevideo.com\\\|googleapis.com\\\|youtubekids.com/d' /tmp/dnsmasq.d/domains.lst" "/etc/init.d/getdomains"
 
-    /etc/init.d/service dnsmasq restart
-    /etc/init.d/service network restart
+    /etc/init.d/dnsmasq restart
+    /etc/init.d/network restart
 
     exit 0
 }
