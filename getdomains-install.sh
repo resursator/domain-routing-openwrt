@@ -93,7 +93,7 @@ parser_for_awg() {
     esac
 }
 
-CONFIG_MISSING = 0
+CONFIG_MISSING=0
 
 get_awg_attribute() {
     local cfg_file="$1"
@@ -105,7 +105,7 @@ get_awg_attribute() {
         if [ ! $CONFIG_MISSING = 0 ]; then
             echo "Config file not found: $cfg_file" >&2
         fi
-        CONFIG_MISSING = 1
+        CONFIG_MISSING=1
     fi
 
     local val parser_code
@@ -259,7 +259,7 @@ add_tunnel() {
         WG_CONFIG_FILE=$(eval echo "$WG_CONFIG_FILE")
         if [ -z "$WG_CONFIG_FILE" ] || [ ! -f "$WG_CONFIG_FILE" ]; then
             echo "Config file not found: $WG_CONFIG_FILE" >&2
-            CONFIG_MISSING = 1
+            CONFIG_MISSING=1
         fi
 
         WG_PRIVATE_KEY=$(get_awg_attribute "$WG_CONFIG_FILE" "PrivateKey" \
@@ -389,7 +389,7 @@ EOF
         AWG_CONFIG_FILE=$(eval echo "$AWG_CONFIG_FILE")
         if [ -z "$AWG_CONFIG_FILE" ] || [ ! -f "$AWG_CONFIG_FILE" ]; then
             echo "Config file not found: $AWG_CONFIG_FILE" >&2
-            CONFIG_MISSING = 1
+            CONFIG_MISSING=1
         fi
 
         AWG_PRIVATE_KEY=$(get_awg_attribute "$AWG_CONFIG_FILE" "PrivateKey" \
