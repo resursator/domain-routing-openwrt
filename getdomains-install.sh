@@ -249,6 +249,7 @@ add_tunnel() {
         else
             echo "Installing wg..."
             opkg install wireguard-tools
+            opkg install luci-proto-wireguard
         fi
 
         route_vpn
@@ -846,6 +847,7 @@ add_internal_wg() {
         else
             echo "Installing wg..."
             opkg install wireguard-tools
+            opkg install luci-proto-wireguard
         fi
         read -r -p "Config file path for auto parsing (empty = manual setup, e.g. ~/wg.conf): " CFG_FILE
     fi
