@@ -844,9 +844,10 @@ add_internal_wg() {
         if opkg list-installed | grep -q wireguard-tools; then
             echo "Wireguard already installed"
         else
-            echo "Installed wg..."
+            echo "Installing wg..."
             opkg install wireguard-tools
         fi
+        read -r -p "Config file path for auto parsing (empty = manual setup, e.g. ~/wg.conf): " CFG_FILE
     fi
 
     if [ "$PROTOCOL_NAME" = 'AmneziaWG' ]; then
@@ -856,9 +857,9 @@ add_internal_wg() {
         ZONE_NAME="awg_internal"
 
         install_awg_packages
+        read -r -p "Config file path for auto parsing (empty = manual setup, e.g. ~/amnezia_for_awg.conf): " CFG_FILE
     fi
 
-    read -r -p "Config file path for auto parsing (empty = manual setup): " CFG_FILE
     CFG_FILE=$(eval echo "$CFG_FILE")
     CONFIG_MISSING=0
     if [ -z "$CFG_FILE" ]; then
