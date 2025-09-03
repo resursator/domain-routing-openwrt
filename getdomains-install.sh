@@ -107,7 +107,7 @@ get_awg_attribute() {
 
     case "$attribute" in
         Address)
-            if [ "$cfg_status" -eq 0 ]; then
+            if [ -n "$cfg_status" ] && [ "$cfg_status" -eq 0 ]; then
                 val=$(parser_for_awg "$cfg_file" "Address")
                 parser_code=$?
             else
@@ -139,7 +139,7 @@ get_awg_attribute() {
             ;;
 
         EndpointPort)
-            if [ "$cfg_status" -eq 0 ]; then
+            if [ -n "$cfg_status" ] && [ "$cfg_status" -eq 0 ]; then
                 val=$(parser_for_awg "$cfg_file" "EndpointPort")
                 parser_code=$?
             fi
@@ -160,7 +160,7 @@ get_awg_attribute() {
             ;;
 
         *)
-            if [ "$cfg_status" -eq 0 ]; then
+            if [ -n "$cfg_status" ] && [ "$cfg_status" -eq 0 ]; then
                 val=$(parser_for_awg "$cfg_file" "$attribute")
                 parser_code=$?
             fi
