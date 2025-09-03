@@ -93,18 +93,32 @@ parser_for_awg() {
     esac
 }
 
+CONFIG_MISSING = 0
+
 get_awg_attribute() {
     local cfg_file="$1"
     local attribute="$2"
     local prompt="$3"
     local default="$4"
 
+    if [ -z "$cfg_file" ] || [ ! -f "$cfg_file" ]; then
+        if [ ! $CONFIG_MISSING = 0 ]; then
+            echo "Config file not found: $cfg_file" >&2
+        fi
+        CONFIG_MISSING = 1
+    fi
+
     local val parser_code
 
     case "$attribute" in
         Address)
-            val=$(parser_for_awg "$cfg_file" "Address")
-            parser_code=$?
+            if [ $CONFIG_MISSING -eq 0 ]; then
+                val=$(parser_for_awg "$cfg_file" "Address")
+                parser_code=$?
+            else
+                parser_code=1
+                read -r -p "$prompt" val
+            fi
             while true; do
                 if [ $parser_code -ne 0 ] || [ -z "$val" ]; then
                     read -r -p "$prompt" val
@@ -130,8 +144,11 @@ get_awg_attribute() {
             ;;
 
         EndpointPort)
-            val=$(parser_for_awg "$cfg_file" "EndpointPort")
-            if [ $? -ne 0 ] || [ -z "$val" ]; then
+            if [ $CONFIG_MISSING -eq 0 ]; then
+                val=$(parser_for_awg "$cfg_file" "EndpointPort")
+                parser_code=$?
+            fi
+            if [ $parser_code -ne 0 ] || [ -z "$val" ]; then
                 read -r -p "$prompt" val
 
                 if [ -z "$val" ] && [ -n "$default" ]; then
@@ -142,14 +159,17 @@ get_awg_attribute() {
                 printf "Invalid port. Enter number between 1 and 65535\n" >&2
                 read -r -p "$prompt" val
                 if [ -z "$val" ] && [ -n "$default" ]; then
-                    val="$default"
+                    val=$default
                 fi
             done
             ;;
 
         *)
-            val=$(parser_for_awg "$cfg_file" "$attribute")
-            if [ $? -ne 0 ] || [ -z "$val" ]; then
+            if [ $CONFIG_MISSING -eq 0 ]; then
+                val=$(parser_for_awg "$cfg_file" "$attribute")
+                parser_code=$?
+            fi
+            if [ $parser_code -ne 0 ] || [ -z "$val" ]; then
                 read -r -p "$prompt" val
                 if [ -z "$val" ] && [ -n "$default" ]; then
                     val="$default"
@@ -237,6 +257,10 @@ add_tunnel() {
 
         read -r -p "Config file path for auto parsing (empty = manual setup, e.g. ~/wg.conf): " WG_CONFIG_FILE
         WG_CONFIG_FILE=$(eval echo "$WG_CONFIG_FILE")
+        if [ -z "$WG_CONFIG_FILE" ] || [ ! -f "$WG_CONFIG_FILE" ]; then
+            echo "Config file not found: $WG_CONFIG_FILE" >&2
+            CONFIG_MISSING = 1
+        fi
 
         WG_PRIVATE_KEY=$(get_awg_attribute "$WG_CONFIG_FILE" "PrivateKey" \
             "Enter the private key (from [Interface]):"$'\n')
@@ -363,6 +387,10 @@ EOF
 
         read -r -p "Config file path for auto parsing (empty = manual setup, e.g. ~/amnezia_for_awg.conf): " AWG_CONFIG_FILE
         AWG_CONFIG_FILE=$(eval echo "$AWG_CONFIG_FILE")
+        if [ -z "$AWG_CONFIG_FILE" ] || [ ! -f "$AWG_CONFIG_FILE" ]; then
+            echo "Config file not found: $AWG_CONFIG_FILE" >&2
+            CONFIG_MISSING = 1
+        fi
 
         AWG_PRIVATE_KEY=$(get_awg_attribute "$AWG_CONFIG_FILE" "PrivateKey" \
             "Enter the private key (from [Interface]):"$'\n')
