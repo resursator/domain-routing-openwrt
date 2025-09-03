@@ -102,7 +102,7 @@ get_awg_attribute() {
     local default="$4"
 
     if [ -z "$cfg_file" ] || [ ! -f "$cfg_file" ]; then
-        if [ ! $CONFIG_MISSING = 0 ]; then
+        if [ ! $CONFIG_MISSING -eq 0 ]; then
             echo "Config file not found: $cfg_file" >&2
         fi
         CONFIG_MISSING=1
