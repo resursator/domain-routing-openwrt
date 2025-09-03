@@ -93,26 +93,18 @@ parser_for_awg() {
     esac
 }
 
-CONFIG_MISSING=0
-
 get_awg_attribute() {
     local cfg_file="$1"
     local attribute="$2"
     local prompt="$3"
-    local default="$4"
-
-    if [ -z "$cfg_file" ] || [ ! -f "$cfg_file" ]; then
-        if [ ! $CONFIG_MISSING -eq 0 ]; then
-            echo "Config file not found: $cfg_file" >&2
-        fi
-        CONFIG_MISSING=1
-    fi
+    local cfg_status="$4"
+    local default="$5"
 
     local val parser_code
 
     case "$attribute" in
         Address)
-            if [ $CONFIG_MISSING -eq 0 ]; then
+            if [ $cfg_status -eq 0 ]; then
                 val=$(parser_for_awg "$cfg_file" "Address")
                 parser_code=$?
             else
@@ -144,7 +136,7 @@ get_awg_attribute() {
             ;;
 
         EndpointPort)
-            if [ $CONFIG_MISSING -eq 0 ]; then
+            if [ $cfg_status -eq 0 ]; then
                 val=$(parser_for_awg "$cfg_file" "EndpointPort")
                 parser_code=$?
             fi
@@ -165,7 +157,7 @@ get_awg_attribute() {
             ;;
 
         *)
-            if [ $CONFIG_MISSING -eq 0 ]; then
+            if [ $cfg_status -eq 0 ]; then
                 val=$(parser_for_awg "$cfg_file" "$attribute")
                 parser_code=$?
             fi
@@ -257,25 +249,26 @@ add_tunnel() {
 
         read -r -p "Config file path for auto parsing (empty = manual setup, e.g. ~/wg.conf): " WG_CONFIG_FILE
         WG_CONFIG_FILE=$(eval echo "$WG_CONFIG_FILE")
+        CONFIG_MISSING=0
         if [ -z "$WG_CONFIG_FILE" ] || [ ! -f "$WG_CONFIG_FILE" ]; then
             echo "Config file not found: $WG_CONFIG_FILE" >&2
             CONFIG_MISSING=1
         fi
 
         WG_PRIVATE_KEY=$(get_awg_attribute "$WG_CONFIG_FILE" "PrivateKey" \
-            "Enter the private key (from [Interface]):"$'\n')
+            "Enter the private key (from [Interface]):"$'\n' $CONFIG_MISSING)
 
         WG_IP=$(get_awg_attribute "$WG_CONFIG_FILE" "Address" \
-            "Enter internal IP address with subnet, example 192.168.100.5/24 (from [Interface]):"$'\n')
+            "Enter internal IP address with subnet, example 192.168.100.5/24 (from [Interface]):"$'\n' $CONFIG_MISSING)
 
         WG_PUBLIC_KEY=$(get_awg_attribute "$WG_CONFIG_FILE" "PublicKey" \
-            "Enter the public key (from [Peer]):"$'\n')
+            "Enter the public key (from [Peer]):"$'\n' $CONFIG_MISSING)
         WG_PRESHARED_KEY=$(get_awg_attribute "$WG_CONFIG_FILE" "PresharedKey" \
-            "If use PresharedKey, enter this (or leave blank):"$'\n')
+            "If use PresharedKey, enter this (or leave blank):"$'\n' $CONFIG_MISSING)
         WG_ENDPOINT=$(get_awg_attribute "$WG_CONFIG_FILE" "EndpointHost" \
-            "Enter Endpoint host without port (Domain or IP) (from [Peer]):"$'\n')
+            "Enter Endpoint host without port (Domain or IP) (from [Peer]):"$'\n' $CONFIG_MISSING)
         WG_ENDPOINT_PORT=$(get_awg_attribute "$WG_CONFIG_FILE" "EndpointPort" \
-            "Enter Endpoint host port (from [Peer]) [51820]:" "51820")
+            "Enter Endpoint host port (from [Peer]) [51820]:" $CONFIG_MISSING "51820")
         
         uci set network.wg0=interface
         uci set network.wg0.proto='wireguard'
@@ -387,36 +380,37 @@ EOF
 
         read -r -p "Config file path for auto parsing (empty = manual setup, e.g. ~/amnezia_for_awg.conf): " AWG_CONFIG_FILE
         AWG_CONFIG_FILE=$(eval echo "$AWG_CONFIG_FILE")
+        CONFIG_MISSING=0
         if [ -z "$AWG_CONFIG_FILE" ] || [ ! -f "$AWG_CONFIG_FILE" ]; then
             echo "Config file not found: $AWG_CONFIG_FILE" >&2
             CONFIG_MISSING=1
         fi
 
         AWG_PRIVATE_KEY=$(get_awg_attribute "$AWG_CONFIG_FILE" "PrivateKey" \
-            "Enter the private key (from [Interface]):"$'\n')
+            "Enter the private key (from [Interface]):"$'\n' $CONFIG_MISSING)
 
         AWG_IP=$(get_awg_attribute "$AWG_CONFIG_FILE" "Address" \
-            "Enter internal IP address with subnet, example 192.168.100.5/24 (Address from [Interface]):"$'\n')
+            "Enter internal IP address with subnet, example 192.168.100.5/24 (Address from [Interface]):"$'\n' $CONFIG_MISSING)
 
-        AWG_JC=$(get_awg_attribute "$AWG_CONFIG_FILE" "Jc" "Enter Jc value (from [Interface]):"$'\n')
-        AWG_JMIN=$(get_awg_attribute "$AWG_CONFIG_FILE" "Jmin" "Enter Jmin value (from [Interface]):"$'\n')
-        AWG_JMAX=$(get_awg_attribute "$AWG_CONFIG_FILE" "Jmax" "Enter Jmax value (from [Interface]):"$'\n')
-        AWG_S1=$(get_awg_attribute "$AWG_CONFIG_FILE" "S1" "Enter S1 value (from [Interface]):"$'\n')
-        AWG_S2=$(get_awg_attribute "$AWG_CONFIG_FILE" "S2" "Enter S2 value (from [Interface]):"$'\n')
-        AWG_H1=$(get_awg_attribute "$AWG_CONFIG_FILE" "H1" "Enter H1 value (from [Interface]):"$'\n')
-        AWG_H2=$(get_awg_attribute "$AWG_CONFIG_FILE" "H2" "Enter H2 value (from [Interface]):"$'\n')
-        AWG_H3=$(get_awg_attribute "$AWG_CONFIG_FILE" "H3" "Enter H3 value (from [Interface]):"$'\n')
-        AWG_H4=$(get_awg_attribute "$AWG_CONFIG_FILE" "H4" "Enter H4 value (from [Interface]):"$'\n')
+        AWG_JC=$(get_awg_attribute "$AWG_CONFIG_FILE" "Jc" "Enter Jc value (from [Interface]):"$'\n' $CONFIG_MISSING)
+        AWG_JMIN=$(get_awg_attribute "$AWG_CONFIG_FILE" "Jmin" "Enter Jmin value (from [Interface]):"$'\n' $CONFIG_MISSING)
+        AWG_JMAX=$(get_awg_attribute "$AWG_CONFIG_FILE" "Jmax" "Enter Jmax value (from [Interface]):"$'\n' $CONFIG_MISSING)
+        AWG_S1=$(get_awg_attribute "$AWG_CONFIG_FILE" "S1" "Enter S1 value (from [Interface]):"$'\n' $CONFIG_MISSING)
+        AWG_S2=$(get_awg_attribute "$AWG_CONFIG_FILE" "S2" "Enter S2 value (from [Interface]):"$'\n' $CONFIG_MISSING)
+        AWG_H1=$(get_awg_attribute "$AWG_CONFIG_FILE" "H1" "Enter H1 value (from [Interface]):"$'\n' $CONFIG_MISSING)
+        AWG_H2=$(get_awg_attribute "$AWG_CONFIG_FILE" "H2" "Enter H2 value (from [Interface]):"$'\n' $CONFIG_MISSING)
+        AWG_H3=$(get_awg_attribute "$AWG_CONFIG_FILE" "H3" "Enter H3 value (from [Interface]):"$'\n' $CONFIG_MISSING)
+        AWG_H4=$(get_awg_attribute "$AWG_CONFIG_FILE" "H4" "Enter H4 value (from [Interface]):"$'\n' $CONFIG_MISSING)
 
-        AWG_PUBLIC_KEY=$(get_awg_attribute "$AWG_CONFIG_FILE" "PublicKey" "Enter the public key (from [Peer]):"$'\n')
+        AWG_PUBLIC_KEY=$(get_awg_attribute "$AWG_CONFIG_FILE" "PublicKey" "Enter the public key (from [Peer]):"$'\n' $CONFIG_MISSING)
         AWG_PRESHARED_KEY=$(get_awg_attribute "$AWG_CONFIG_FILE" "PresharedKey" \
-            "If use PresharedKey, Enter this (from [Peer]). If your don't use leave blank:"$'\n')
+            "If use PresharedKey, Enter this (from [Peer]). If your don't use leave blank:"$'\n' $CONFIG_MISSING)
 
         AWG_ENDPOINT=$(get_awg_attribute "$AWG_CONFIG_FILE" "EndpointHost" \
-            "Enter Endpoint host without port (Domain or IP) (from [Peer]):"$'\n')
+            "Enter Endpoint host without port (Domain or IP) (from [Peer]):"$'\n' $CONFIG_MISSING)
 
         AWG_ENDPOINT_PORT=$(get_awg_attribute "$AWG_CONFIG_FILE" "EndpointPort" \
-            "Enter Endpoint host port (from [Peer]) [51820]:"$'\n' "51820")
+            "Enter Endpoint host port (from [Peer]) [51820]:"$'\n' $CONFIG_MISSING "51820")
 
         uci set network.awg0=interface
         uci set network.awg0.proto='amneziawg'
@@ -854,26 +848,37 @@ add_internal_wg() {
 
     read -r -p "Config file path for auto parsing (empty = manual setup): " CFG_FILE
     CFG_FILE=$(eval echo "$CFG_FILE")
+    CONFIG_MISSING=0
+    if [ -z "$CFG_FILE" ] || [ ! -f "$CFG_FILE" ]; then
+        echo "Config file not found: $CFG_FILE" >&2
+        CONFIG_MISSING=1
+    fi
 
-    WG_PRIVATE_KEY_INT=$(get_awg_attribute "$CFG_FILE" "PrivateKey" "Enter the private key (from [Interface]):"$'\n')
-    WG_IP=$(get_awg_attribute "$CFG_FILE" "Address" "Enter internal IP address with subnet, example 192.168.100.5/24 (from [Interface]):"$'\n')
+    WG_PRIVATE_KEY_INT=$(get_awg_attribute "$CFG_FILE" "PrivateKey" \
+        "Enter the private key (from [Interface]):"$'\n' $CONFIG_MISSING)
+    WG_IP=$(get_awg_attribute "$CFG_FILE" "Address" \
+        "Enter internal IP address with subnet, example 192.168.100.5/24 (from [Interface]):"$'\n' $CONFIG_MISSING)
 
-    WG_PUBLIC_KEY_INT=$(get_awg_attribute "$CFG_FILE" "PublicKey" "Enter the public key (from [Peer]):"$'\n')
-    WG_PRESHARED_KEY_INT=$(get_awg_attribute "$CFG_FILE" "PresharedKey" "If use PresharedKey, Enter this (from [Peer]). If your don't use leave blank:"$'\n')
-    WG_ENDPOINT_INT=$(get_awg_attribute "$CFG_FILE" "EndpointHost" "Enter Endpoint host without port (Domain or IP) (from [Peer]):"$'\n')
+    WG_PUBLIC_KEY_INT=$(get_awg_attribute "$CFG_FILE" "PublicKey" \
+        "Enter the public key (from [Peer]):"$'\n' $CONFIG_MISSING)
+    WG_PRESHARED_KEY_INT=$(get_awg_attribute "$CFG_FILE" "PresharedKey" \
+        "If use PresharedKey, Enter this (from [Peer]). If your don't use leave blank:"$'\n' $CONFIG_MISSING)
+    WG_ENDPOINT_INT=$(get_awg_attribute "$CFG_FILE" "EndpointHost" \
+        "Enter Endpoint host without port (Domain or IP) (from [Peer]):"$'\n' $CONFIG_MISSING)
 
-    WG_ENDPOINT_PORT_INT=$(get_awg_attribute "$CFG_FILE" "EndpointPort" "Enter Endpoint host port (from [Peer]) [51820]:" "51820")
+    WG_ENDPOINT_PORT_INT=$(get_awg_attribute "$CFG_FILE" "EndpointPort" \
+        "Enter Endpoint host port (from [Peer]) [51820]:" $CONFIG_MISSING "51820")
 
     if [ "$PROTOCOL_NAME" = 'AmneziaWG' ]; then
-        AWG_JC=$(get_awg_attribute "$CFG_FILE" "Jc" "Enter Jc value (from [Interface]):"$'\n')
-        AWG_JMIN=$(get_awg_attribute "$CFG_FILE" "Jmin" "Enter Jmin value (from [Interface]):"$'\n')
-        AWG_JMAX=$(get_awg_attribute "$CFG_FILE" "Jmax" "Enter Jmax value (from [Interface]):"$'\n')
-        AWG_S1=$(get_awg_attribute "$CFG_FILE" "S1" "Enter S1 value (from [Interface]):"$'\n')
-        AWG_S2=$(get_awg_attribute "$CFG_FILE" "S2" "Enter S2 value (from [Interface]):"$'\n')
-        AWG_H1=$(get_awg_attribute "$CFG_FILE" "H1" "Enter H1 value (from [Interface]):"$'\n')
-        AWG_H2=$(get_awg_attribute "$CFG_FILE" "H2" "Enter H2 value (from [Interface]):"$'\n')
-        AWG_H3=$(get_awg_attribute "$CFG_FILE" "H3" "Enter H3 value (from [Interface]):"$'\n')
-        AWG_H4=$(get_awg_attribute "$CFG_FILE" "H4" "Enter H4 value (from [Interface]):"$'\n')
+        AWG_JC=$(get_awg_attribute "$CFG_FILE" "Jc" "Enter Jc value (from [Interface]):"$'\n' $CONFIG_MISSING)
+        AWG_JMIN=$(get_awg_attribute "$CFG_FILE" "Jmin" "Enter Jmin value (from [Interface]):"$'\n' $CONFIG_MISSING)
+        AWG_JMAX=$(get_awg_attribute "$CFG_FILE" "Jmax" "Enter Jmax value (from [Interface]):"$'\n' $CONFIG_MISSING)
+        AWG_S1=$(get_awg_attribute "$CFG_FILE" "S1" "Enter S1 value (from [Interface]):"$'\n' $CONFIG_MISSING)
+        AWG_S2=$(get_awg_attribute "$CFG_FILE" "S2" "Enter S2 value (from [Interface]):"$'\n' $CONFIG_MISSING)
+        AWG_H1=$(get_awg_attribute "$CFG_FILE" "H1" "Enter H1 value (from [Interface]):"$'\n' $CONFIG_MISSING)
+        AWG_H2=$(get_awg_attribute "$CFG_FILE" "H2" "Enter H2 value (from [Interface]):"$'\n' $CONFIG_MISSING)
+        AWG_H3=$(get_awg_attribute "$CFG_FILE" "H3" "Enter H3 value (from [Interface]):"$'\n' $CONFIG_MISSING)
+        AWG_H4=$(get_awg_attribute "$CFG_FILE" "H4" "Enter H4 value (from [Interface]):"$'\n' $CONFIG_MISSING)
     fi
     
     uci set network.${INTERFACE_NAME}=interface
