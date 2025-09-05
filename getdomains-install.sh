@@ -179,68 +179,124 @@ get_awg_attribute() {
     echo "$val"
 }
 
+get_config_file() {
+    local file
+    local message=$1
+    local filename=$2
+
+    if [ -n "$filename" ]; then
+        file=$(eval echo "$filename")
+        echo "Config file specified as argument: $file" >&2
+    else
+        read -r -p "$message" file
+        file=$(eval echo "$file")
+    fi
+
+    if [ -z "$file" ]; then
+        echo "Config file not specified, starting manual setup" >&2
+        echo ""
+        return
+    elif [ ! -f "$file" ]; then
+        echo "Config file not found: $file, starting manual setup" >&2
+        echo ""
+        return
+    fi
+
+    echo "$file"
+}
+
+
+map_tunnel_choice() {
+    case "$1" in
+        1|wg)            echo "wg" ;;
+        2|ovpn)          echo "ovpn" ;;
+        3|singbox)       echo "singbox" ;;
+        4|tun2socks)     echo "tun2socks" ;;
+        5|wgForYoutube)  echo "wgForYoutube" ;;
+        6|awg)           echo "awg" ;;
+        7|awgForYoutube) echo "awgForYoutube" ;;
+        8|0|skip)        echo "0" ;;
+        *)               echo "" ;;
+    esac
+}
+
 add_tunnel() {
-    echo "We can automatically configure only Wireguard and Amnezia WireGuard. OpenVPN, Sing-box(Shadowsocks2022, VMess, VLESS, etc) and tun2socks will need to be configured manually"
-    echo "Select a tunnel:"
-    echo "1) WireGuard"
-    echo "2) OpenVPN"
-    echo "3) Sing-box"
-    echo "4) tun2socks"
-    echo "5) wgForYoutube"
-    echo "6) Amnezia WireGuard"
-    echo "7) Amnezia WireGuard For Youtube"
-    echo "8) Skip this step"
+    local tunnel_arg="$1"
+    local filename_arg="$2"
 
-    while true; do
-    read -r -p '' TUNNEL
-        case $TUNNEL in 
+    if [ -n "$tunnel_arg" ]; then
+        TUNNEL=$(map_tunnel_choice "$tunnel_arg")
+        if [ -n "$TUNNEL" ]; then
+            echo "Tunnel '$TUNNEL' was chosen automatically."
+        else
+            echo "Error: '$tunnel_arg' isn't correct tunnel. Manual mode."
+            TUNNEL=""
+        fi
+    fi
 
-        1) 
-            TUNNEL=wg
-            break
-            ;;
+    if [ -z "$TUNNEL" ]; then
+        echo "We can automatically configure only Wireguard and Amnezia WireGuard. OpenVPN, Sing-box(Shadowsocks2022, VMess, VLESS, etc) and tun2socks will need to be configured manually"
+        echo "Select a tunnel:"
+        echo "1) WireGuard"
+        echo "2) OpenVPN"
+        echo "3) Sing-box"
+        echo "4) tun2socks"
+        echo "5) wgForYoutube"
+        echo "6) Amnezia WireGuard"
+        echo "7) Amnezia WireGuard For Youtube"
+        echo "8) Skip this step"
 
-        2)
-            TUNNEL=ovpn
-            break
-            ;;
+        while true; do
+            read -r -p '' TUNNEL
+            case $TUNNEL in 
 
-        3) 
-            TUNNEL=singbox
-            break
-            ;;
+            1) 
+                TUNNEL=wg
+                break
+                ;;
 
-        4) 
-            TUNNEL=tun2socks
-            break
-            ;;
+            2)
+                TUNNEL=ovpn
+                break
+                ;;
 
-        5) 
-            TUNNEL=wgForYoutube
-            break
-            ;;
+            3) 
+                TUNNEL=singbox
+                break
+                ;;
 
-        6) 
-            TUNNEL=awg
-            break
-            ;;
+            4) 
+                TUNNEL=tun2socks
+                break
+                ;;
 
-        7) 
-            TUNNEL=awgForYoutube
-            break
-            ;;
+            5) 
+                TUNNEL=wgForYoutube
+                break
+                ;;
 
-        8)
-            echo "Skip"
-            TUNNEL=0
-            break
-            ;;
+            6) 
+                TUNNEL=awg
+                break
+                ;;
 
-        *)
-            echo "Choose from the following options"
-            ;;
-        esac
-    done
+            7) 
+                TUNNEL=awgForYoutube
+                break
+                ;;
+
+            8)
+                echo "Skip"
+                TUNNEL=0
+                break
+                ;;
+
+            *)
+                echo "Choose from the following options"
+                ;;
+            esac
+        done
+    fi
 
     if [ "$TUNNEL" == 'wg' ]; then
         printf "\033[32;1mConfigure WireGuard\033[0m\n"
@@ -254,15 +310,12 @@ add_tunnel() {
 
         route_vpn
 
-        read -r -p "Config file path for auto parsing (empty = manual setup, e.g. ~/wg.conf): " WG_CONFIG_FILE
-        WG_CONFIG_FILE=$(eval echo "$WG_CONFIG_FILE")
-        CONFIG_MISSING=0
+        WG_CONFIG_FILE=$(get_config_file "Config file path for auto parsing (empty = manual setup, e.g. ~/wg.conf): " "$filename_arg")
+
         if [ -z "$WG_CONFIG_FILE" ]; then
-            echo "Config file not specified, starting manual setup" >&2
             CONFIG_MISSING=1
-        elif [ ! -f "$WG_CONFIG_FILE" ]; then
-            echo "Config file not found: $WG_CONFIG_FILE, starting manual setup" >&2
-            CONFIG_MISSING=1
+        else
+            CONFIG_MISSING=0
         fi
 
         WG_PRIVATE_KEY=$(get_awg_attribute "$WG_CONFIG_FILE" "PrivateKey" \
@@ -374,11 +427,11 @@ EOF
     fi
 
     if [ "$TUNNEL" == 'wgForYoutube' ]; then
-        add_internal_wg Wireguard
+        add_internal_wg Wireguard $filename_arg
     fi
 
     if [ "$TUNNEL" == 'awgForYoutube' ]; then
-        add_internal_wg AmneziaWG
+        add_internal_wg AmneziaWG $filename_arg
     fi
 
     if [ "$TUNNEL" == 'awg' ]; then
@@ -388,15 +441,12 @@ EOF
 
         route_vpn
 
-        read -r -p "Config file path for auto parsing (empty = manual setup, e.g. ~/amnezia_for_awg.conf): " AWG_CONFIG_FILE
-        AWG_CONFIG_FILE=$(eval echo "$AWG_CONFIG_FILE")
-        CONFIG_MISSING=0
-        if [ -z "$AWG_CONFIG_FILE" ]; then
-            echo "Config file not specified, starting manual setup" >&2
+        AWG_CONFIG_FILE=$(get_config_file "Config file path for auto parsing (empty = manual setup, e.g. ~/amnezia_for_awg.conf): " "$filename_arg")
+
+        if [ -z "$WG_CONFIG_FILE" ]; then
             CONFIG_MISSING=1
-        elif [ ! -f "$AWG_CONFIG_FILE" ]; then
-            echo "Config file not found: $AWG_CONFIG_FILE, starting manual setup" >&2
-            CONFIG_MISSING=1
+        else
+            CONFIG_MISSING=0
         fi
 
         AWG_PRIVATE_KEY=$(get_awg_attribute "$AWG_CONFIG_FILE" "PrivateKey" \
@@ -834,9 +884,10 @@ EOF
 }
 
 add_internal_wg() {
-    PROTOCOL_NAME=$1
-    printf "\033[32;1mConfigure ${PROTOCOL_NAME}\033[0m\n"
-    if [ "$PROTOCOL_NAME" = 'Wireguard' ]; then
+    local protocol_name=$1
+    local file_name=$2
+    printf "\033[32;1mConfigure ${protocol_name}\033[0m\n"
+    if [ "$protocol_name" = 'Wireguard' ]; then
         INTERFACE_NAME="wg1"
         CONFIG_NAME="wireguard_wg1"
         PROTO="wireguard"
@@ -849,27 +900,24 @@ add_internal_wg() {
             opkg install wireguard-tools
             opkg install luci-proto-wireguard
         fi
-        read -r -p "Config file path for auto parsing (empty = manual setup, e.g. ~/wg.conf): " CFG_FILE
+        file_read_msg="Config file path for auto parsing (empty = manual setup, e.g. ~/wg.conf): "
     fi
 
-    if [ "$PROTOCOL_NAME" = 'AmneziaWG' ]; then
+    if [ "$protocol_name" = 'AmneziaWG' ]; then
         INTERFACE_NAME="awg1"
         CONFIG_NAME="amneziawg_awg1"
         PROTO="amneziawg"
         ZONE_NAME="awg_internal"
 
         install_awg_packages
-        read -r -p "Config file path for auto parsing (empty = manual setup, e.g. ~/amnezia_for_awg.conf): " CFG_FILE
+        file_read_msg="Config file path for auto parsing (empty = manual setup, e.g. ~/amnezia_for_awg.conf): "
     fi
 
-    CFG_FILE=$(eval echo "$CFG_FILE")
-    CONFIG_MISSING=0
+    CFG_FILE=$(get_config_file "$file_read_msg" "$file_name")
     if [ -z "$CFG_FILE" ]; then
-        echo "Config file not specified, starting manual setup" >&2
         CONFIG_MISSING=1
-    elif [ ! -f "$CFG_FILE" ]; then
-        echo "Config file not found: $CFG_FILE, starting manual setup" >&2
-        CONFIG_MISSING=1
+    else
+        CONFIG_MISSING=0
     fi
 
     WG_PRIVATE_KEY_INT=$(get_awg_attribute "$CFG_FILE" "PrivateKey" \
@@ -887,7 +935,7 @@ add_internal_wg() {
     WG_ENDPOINT_PORT_INT=$(get_awg_attribute "$CFG_FILE" "EndpointPort" \
         "Enter Endpoint host port (from [Peer]) [51820]:" $CONFIG_MISSING "51820")
 
-    if [ "$PROTOCOL_NAME" = 'AmneziaWG' ]; then
+    if [ "$protocol_name" = 'AmneziaWG' ]; then
         AWG_JC=$(get_awg_attribute "$CFG_FILE" "Jc" "Enter Jc value (from [Interface]):"$'\n' $CONFIG_MISSING)
         AWG_JMIN=$(get_awg_attribute "$CFG_FILE" "Jmin" "Enter Jmin value (from [Interface]):"$'\n' $CONFIG_MISSING)
         AWG_JMAX=$(get_awg_attribute "$CFG_FILE" "Jmax" "Enter Jmax value (from [Interface]):"$'\n' $CONFIG_MISSING)
@@ -905,7 +953,7 @@ add_internal_wg() {
     uci set network.${INTERFACE_NAME}.listen_port='51821'
     uci set network.${INTERFACE_NAME}.addresses="$WG_IP"
 
-    if [ "$PROTOCOL_NAME" = 'AmneziaWG' ]; then
+    if [ "$protocol_name" = 'AmneziaWG' ]; then
         uci set network.${INTERFACE_NAME}.awg_jc="$AWG_JC"
         uci set network.${INTERFACE_NAME}.awg_jmin="$AWG_JMIN"
         uci set network.${INTERFACE_NAME}.awg_jmax="$AWG_JMAX"
@@ -1142,7 +1190,9 @@ check_repo
 
 add_packages
 
-add_tunnel
+arg1=$(printf '%s' "$1" | tr 'A-Z' 'a-z')
+arg2="$2"
+add_tunnel $arg1 $arg2
 
 add_mark
 
