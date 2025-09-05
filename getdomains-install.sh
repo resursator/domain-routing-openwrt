@@ -181,8 +181,8 @@ get_awg_attribute() {
 
 get_config_file() {
     local file
-    local message=$1
-    local filename=$2
+    local message="$1"
+    local filename="$2"
 
     if [ -n "$filename" ]; then
         file=$(eval echo "$filename")
