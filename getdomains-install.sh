@@ -443,7 +443,7 @@ EOF
 
         AWG_CONFIG_FILE=$(get_config_file "Config file path for auto parsing (empty = manual setup, e.g. ~/amnezia_for_awg.conf): " "$filename_arg")
 
-        if [ -z "$WG_CONFIG_FILE" ]; then
+        if [ -z "$AWG_CONFIG_FILE" ]; then
             CONFIG_MISSING=1
         else
             CONFIG_MISSING=0
