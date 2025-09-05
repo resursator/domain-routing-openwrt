@@ -767,7 +767,8 @@ add_dns_resolver() {
                 printf "\033[31;1mDNSCrypt not download list on /etc/dnscrypt-proxy2. Repeat install DNSCrypt by script.\033[0m\n"
             fi
         fi
-    elif [ "$DNS_RESOLVER" = "STUBBY" ]; then
+    fi
+    if [ "$DNS_RESOLVER" = "STUBBY" ]; then
 
         printf "\033[32;1mConfigure Stubby\033[0m\n"
 
