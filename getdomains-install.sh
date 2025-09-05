@@ -185,11 +185,17 @@ get_config_file() {
     local filename="$2"
 
     if [ -n "$filename" ]; then
-        file=$(eval echo "$filename")
+        if [ "${filename#~}" != "$filename" ]; then
+            file="${filename/#\~/$HOME}"
+        else
+            file="$filename"
+        fi
         echo "Config file specified as argument: $file" >&2
     else
         read -r -p "$message" file
-        file=$(eval echo "$file")
+        if [ "${file#~}" != "$file" ]; then
+            file="${file/#\~/$HOME}"
+        fi
     fi
 
     if [ -z "$file" ]; then
