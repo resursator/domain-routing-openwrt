@@ -727,7 +727,7 @@ add_dns_resolver() {
             fi
 
             printf "\033[32;1mDNSCrypt restart\033[0m\n"
-            /etc/init.d/service dnscrypt-proxy restart
+            /etc/init.d/dnscrypt-proxy restart
             printf "\033[32;1mDNSCrypt needs to load the relays list. Please wait\033[0m\n"
             sleep 30
 
