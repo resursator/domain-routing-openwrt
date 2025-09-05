@@ -681,40 +681,62 @@ add_set() {
 }
 
 add_dns_resolver() {
-    echo "Configure DNSCrypt2 or Stubby? It does matter if your ISP is spoofing DNS requests"
+    local arg="$1"
+
+    echo "Configure DNSCrypt2 or Stubby? It matters if your ISP is spoofing DNS requests"
+
     DISK=$(df -m / | awk 'NR==2{ print $2 }')
-    if [[ "$DISK" -lt 32 ]]; then 
-        printf "\033[31;1mYour router a disk have less than 32MB. It is not recommended to install DNSCrypt, it takes 10MB\033[0m\n"
+    if [ "$DISK" -lt 32 ]; then 
+        printf "\033[31;1mYour router disk has less than 32MB. It is not recommended to install DNSCrypt, it takes 10MB\033[0m\n"
     fi
-    echo "Select:"
-    echo "1) No [Default]"
-    echo "2) DNSCrypt2 (10.7M)"
-    echo "3) Stubby (36K)"
 
-    while true; do
-    read -r -p '' DNS_RESOLVER
-        case $DNS_RESOLVER in 
-
-        1) 
-            echo "Skiped"
-            break
-            ;;
-
-        2)
-            DNS_RESOLVER=DNSCRYPT
-            break
-            ;;
-
-        3) 
-            DNS_RESOLVER=STUBBY
-            break
-            ;;
-
-        *)
-            echo "Choose from the following options"
-            ;;
+    # parsing 3rd arg
+    if [ -n "$arg" ]; then
+        arg=$(printf '%s' "$arg" | tr 'A-Z' 'a-z')
+        case "$arg" in
+            1|no)
+                echo "Skipped"
+                DNS_RESOLVER="" ;;
+            2|dnscrypt|dnscrypt2)
+                echo "DNSCrypt2 will be installed"
+                DNS_RESOLVER="DNSCRYPT" ;;
+            3|stubby)
+                echo "Stubby will be installed"
+                DNS_RESOLVER="STUBBY" ;;
+            *)
+                echo "Invalid option '$arg', switching to manual mode" >&2
+                DNS_RESOLVER=""
+                ;;
         esac
-    done
+    fi
+
+    # manual select after failing arg reading
+    if [ -z "$DNS_RESOLVER" ]; then
+        echo "Select:"
+        echo "1) No [Default]"
+        echo "2) DNSCrypt2 (10.7M)"
+        echo "3) Stubby (36K)"
+
+        while true; do
+            read -r -p '' DNS_RESOLVER
+            DNS_RESOLVER=$(printf '%s' "$DNS_RESOLVER" | tr 'A-Z' 'a-z')
+            case "$DNS_RESOLVER" in
+                1|no)
+                    echo "Skipped"
+                    DNS_RESOLVER=""
+                    break ;;
+                2|dnscrypt|dnscrypt2)
+                    DNS_RESOLVER="DNSCRYPT"
+                    break ;;
+                3|stubby)
+                    DNS_RESOLVER="STUBBY"
+                    break ;;
+                *)
+                    echo "Choose from the following options"
+                    ;;
+            esac
+        done
+    fi
 
     if [ "$DNS_RESOLVER" == 'DNSCRYPT' ]; then
         if opkg list-installed | grep -q dnscrypt-proxy2; then
@@ -744,11 +766,9 @@ add_dns_resolver() {
             else
                 printf "\033[31;1mDNSCrypt not download list on /etc/dnscrypt-proxy2. Repeat install DNSCrypt by script.\033[0m\n"
             fi
-    fi
 
-    fi
+    elif [ "$DNS_RESOLVER" = "STUBBY" ]; then
 
-    if [ "$DNS_RESOLVER" == 'STUBBY' ]; then
         printf "\033[32;1mConfigure Stubby\033[0m\n"
 
         if opkg list-installed | grep -q stubby; then
@@ -790,43 +810,70 @@ add_packages() {
 }
 
 add_getdomains() {
+    local arg="$1"
     echo "Choose you country"
-    echo "Select:"
-    echo "1) Russia inside. You are inside Russia"
-    echo "2) Russia outside. You are outside of Russia, but you need access to Russian resources"
-    echo "3) Ukraine. uablacklist.net list"
-    echo "4) Skip script creation"
-
-    while true; do
-    read -r -p '' COUNTRY
-        case $COUNTRY in 
-
-        1) 
-            COUNTRY=russia_inside
-            break
-            ;;
-
-        2)
-            COUNTRY=russia_outside
-            break
-            ;;
-
-        3) 
-            COUNTRY=ukraine
-            break
-            ;;
-
-        4) 
-            echo "Skiped"
-            COUNTRY=0
-            break
-            ;;
-
-        *)
-            echo "Choose from the following options"
-            ;;
+    if [ -n "$arg" ]; then
+        arg=$(printf '%s' "$arg" | tr 'A-Z' 'a-z')
+        case "$arg" in
+            1|russia_inside|inside)
+                COUNTRY="russia_inside"
+                echo "Selected country automatically: Russia inside" ;;
+            2|russia_outside|outside)
+                COUNTRY="russia_outside"
+                echo "Selected country automatically: Russia outside" ;;
+            3|ukraine)
+                COUNTRY="ukraine"
+                echo "Selected country automatically: Ukraine" ;;
+            4|0|skip)
+                COUNTRY=0
+                echo "Skipped"
+                ;;
+            *)
+                echo "Invalid option '$arg', switching to manual mode" >&2
+                COUNTRY=""
+                ;;
         esac
-    done
+    fi
+
+    # manual after failing argument reading
+    if [ -z "$COUNTRY" ]; then
+        echo "Select:"
+        echo "1) Russia inside. You are inside Russia"
+        echo "2) Russia outside. You are outside of Russia, but you need access to Russian resources"
+        echo "3) Ukraine. uablacklist.net list"
+        echo "4) Skip script creation"
+
+        while true; do
+            read -r -p '' COUNTRY
+            case $COUNTRY in 
+
+            1) 
+                COUNTRY=russia_inside
+                break
+                ;;
+
+            2)
+                COUNTRY=russia_outside
+                break
+                ;;
+
+            3) 
+                COUNTRY=ukraine
+                break
+                ;;
+
+            4) 
+                echo "Skiped"
+                COUNTRY=0
+                break
+                ;;
+
+            *)
+                echo "Choose from the following options"
+                ;;
+            esac
+        done
+    fi
 
     if [ "$COUNTRY" == 'russia_inside' ]; then
         EOF_DOMAINS=DOMAINS=https://raw.githubusercontent.com/itdoginfo/allow-domains/main/Russia/inside-dnsmasq-nfset.lst
@@ -1206,9 +1253,11 @@ dnsmasqfull
 
 dnsmasqconfdir
 
-add_dns_resolver
+arg3="$3"
+add_dns_resolver $arg3
 
-add_getdomains
+arg4="$4"
+add_getdomains $arg4
 
 printf "\033[32;1mRestart network\033[0m\n"
 
