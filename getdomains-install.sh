@@ -212,9 +212,9 @@ map_tunnel_choice() {
         2|ovpn)          echo "ovpn" ;;
         3|singbox)       echo "singbox" ;;
         4|tun2socks)     echo "tun2socks" ;;
-        5|wgForYoutube)  echo "wgForYoutube" ;;
+        5|wgforyoutube)  echo "wgForYoutube" ;;
         6|awg)           echo "awg" ;;
-        7|awgForYoutube) echo "awgForYoutube" ;;
+        7|awgforyoutube) echo "awgForYoutube" ;;
         8|0|skip)        echo "0" ;;
         *)               echo "" ;;
     esac
